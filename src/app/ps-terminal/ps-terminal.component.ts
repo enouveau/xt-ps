@@ -1,7 +1,7 @@
 import { Component, OnInit, AfterViewInit, OnDestroy } from '@angular/core';
 import * as Terminal from "xterm";
-//import { searchAddon } from '../xterm/lib/addons/search'
-import "xterm/dist/addons/fit/fit";
+// import { searchAddon } from '../xterm/lib/addons/search'
+// import "xterm/dist/addons/fit/fit";
 
 @Component({
   selector: 'app-ps-terminal',
@@ -17,8 +17,8 @@ export class PsTerminalComponent implements OnInit {
   private socket: WebSocket = null;
 
   constructor() {
-    Terminal.loadAddon('fit');
-    Terminal.loadAddon('attach');
+    // Terminal.loadAddon('fit');
+    // Terminal.loadAddon('attach');
   }
 
   ngOnInit() {
@@ -28,11 +28,10 @@ export class PsTerminalComponent implements OnInit {
 
     // Create a terminal
     this.terminal = new Terminal({
-      cursorBlink: true,
-      cursorHidden: false,
+      cursorBlink: false,
       cols: 80,
       rows: 32,
-      scrollback: 80,
+      scrollback: 200,
     });
 
     this.container = document.getElementById('terminal-container');
@@ -40,12 +39,12 @@ export class PsTerminalComponent implements OnInit {
     // second parameter is focus
     this.terminal.open(this.container, true);
     // console.log("pid: " + this.terminal.pid);
-    //this.terminal.fit();
+    // this.terminal.fit();
 
     // this.terminal.winptyCompatInit();
     if (this.socket != null) {
       this.socket.onopen = function (ev) {
-        this.terminal.writeln('PowerShell connected..');
+        this.terminal.writeln('PowerShell connected...');
 
         // Attach the socket to the terminal
         // see xtermjs.org > docs > attach addon for explanation on attach params
@@ -59,22 +58,22 @@ export class PsTerminalComponent implements OnInit {
 
         this.terminal.prompt();
 
+        // Fires when user wrote something in the terminal
         this.terminal.on('data', function (data) {
-          this.socket.send(data);
-          //console.log(data);
+          this.terminal.write(data);
         }.bind(this));
 
+        // Send every keystroke to powershell
         this.terminal.on('key', function (key, ev) {
-          var printable = (
-            !ev.altKey && !ev.altGraphKey && !ev.ctrlKey && !ev.metaKey
-          );
-
-          if (printable) {
-            this.terminal.write(key);
-          }
-
+          this.socket.send(key);
         }.bind(this));
 
+      }.bind(this);
+
+      // Fires when we receive data from PowerShell
+      this.socket.onmessage = function (ev) {
+        this.terminal.write(ev.data);
+        this.terminal.write('\r\n');
       }.bind(this);
 
       this.socket.onerror = function (ev) {
@@ -83,27 +82,18 @@ export class PsTerminalComponent implements OnInit {
 
       this.socket.onclose = function (ev) {
         this.terminal.writeln("Socket closed..");
-
       }.bind(this);
-
-      this.socket.onmessage = function (ev) {
-        this.terminal.write(ev.data);
-        this.terminal.prompt();
-      }.bind(this);
-
     }
     else {
       console.log("Socket open error..");
     }
-
   }
 
   ngOnDestroy() {
     this.socket.close();
-    this.terminal.detach(this.socket);
+    // this.terminal.detach(this.socket);
   }
 
   ngAfterViewInit() {
   }
-  
 }
